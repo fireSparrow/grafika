@@ -1,4 +1,6 @@
 
+import numpy as np
+
 from artist import BaseArtist
 from math import floor, ceil
 
@@ -9,18 +11,21 @@ def mix_color(old, new, v):
 
 class BaseFigure(BaseArtist):
 
+    _formula = None
+
     def _actual_fragment(self):
         """ Возвращает прямоугольный фрагмент холста,
             за пределы которого рендеринг гарантированно не выйдет.
             Для базового класса это холст целиком, в потомках крайне рекомендуется найти эвристики,
             обрезающие его, иначе будет нехилый оверхед по памяти и процессору,
-            особенно при отрисовке маленьких фигур """
+            особенно при отрисовке множества маленьких фигур """
         p = self._params
         return p.canvas.image
 
     def _create_mask(self):
         fragment = self._actual_fragment()
-        # TODO
+        w, h, _ = fragment.shape
+        return np.zeros(dtype=bool, shape=(w, h))
 
     def _pixel(self, canvas, x, y, color, value):
         """ Окрашивает пиксель в заданный цвет.
@@ -49,4 +54,12 @@ class Point(BaseFigure):
 class Line(BaseFigure):
 
     def _render(self):
-        pass
+        p = self._params
+        dx, dy = (p.x1 - p.x0), (p.y1 - p.y0)
+        adx, ady = abs(dx), abs(dy)
+        if not (adx or ady):
+            return
+        if adx > ady:
+            def formula(x, y):
+
+
