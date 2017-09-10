@@ -4,6 +4,8 @@ import numpy as np
 from artist import BaseArtist
 from math import floor, ceil
 
+from collections import deque
+
 
 def mix_color(old, new, v):
     return tuple(o*(1-v) + n*v for o, n in zip(old, new))
@@ -11,7 +13,9 @@ def mix_color(old, new, v):
 
 class BaseFigure(BaseArtist):
 
-    _formula = None
+    _left = None    # equation left part
+    _right = None   # equation right part
+    _start = None   # function, that returns start point
 
     def _actual_fragment(self):
         """ Возвращает прямоугольный фрагмент холста,
@@ -20,20 +24,49 @@ class BaseFigure(BaseArtist):
             обрезающие его, иначе будет нехилый оверхед по памяти и процессору,
             особенно при отрисовке множества маленьких фигур """
         p = self._params
-        return p.canvas.image
+        return p.canvas
 
-    def _create_mask(self):
-        fragment = self._actual_fragment()
-        w, h, _ = fragment.shape
-        return np.zeros(dtype=bool, shape=(w, h))
+    @staticmethod
+    def _create_mask(fragment):
+        w, h, _ = fragment.image.shape
+        mask = np.zeros(dtype=bool, shape=(w+1, h+1))
+        mask[w, :] = True
+        mask[:, h] = True
+        return mask
 
-    def _pixel(self, canvas, x, y, color, value):
+    @staticmethod
+    def _pixel(canvas, x, y, color, value):
         """ Окрашивает пиксель в заданный цвет.
             Если value < 1, цвет будет частично разбавлен прежним цветом пикселя """
         value = max(0, min(value, 1))
+        # Opt: возможно, при value == 1 делать по упрощённой схеме
         old_color = tuple(canvas.image[x, y])
         new_color = mix_color(old_color, color, value)
-        canvas._pixel(x, y, color=new_color)
+        canvas.pixel(x, y, color=new_color)
+
+    def _render(self):
+        # Возможно, есть смысл делать слепок актуальных параметров в одну эффективную структуру
+        color = (255, 255, 255)  # TODO
+        fragment = self._actual_fragment()
+        visited = self._create_mask(fragment)
+        queue = deque()  # сравнить производительность deque и list
+        # TODO Поправка координат на смещение фрагмента
+        queue.append(self._start())
+        while queue:
+            point = queue.popleft()
+            if not visited[point]:
+                deviation = self._right() - self._left(point[0], point[1])
+                value = max(0, min(deviation, 1))
+                print(value)
+                if value:
+                    self._pixel(fragment, point[0], point[1], color, value)
+                    # Делать ли проверку visited перед добавлением
+                    # Создать ли заранее переменные x и y
+                    queue.append((point[0]-1, point[1]))
+                    queue.append((point[0]+1, point[1]))
+                    queue.append((point[0], point[1]-1))
+                    queue.append((point[0], point[1]+1))
+                    visited[point] = True
 
 
 class Point(BaseFigure):
@@ -52,14 +85,6 @@ class Point(BaseFigure):
                 self._pixel(canvas, x, y, color, rx*ry)
 
 class Line(BaseFigure):
-
-    def _render(self):
-        p = self._params
-        dx, dy = (p.x1 - p.x0), (p.y1 - p.y0)
-        adx, ady = abs(dx), abs(dy)
-        if not (adx or ady):
-            return
-        if adx > ady:
-            def formula(x, y):
-
-
+    _left = lambda self, x, y: (x-y)/5
+    _right = lambda self: 2
+    _start = lambda self: (10, 10)

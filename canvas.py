@@ -35,7 +35,7 @@ class Canvas:
     def impose(self, artist, *args, **kwargs):
         artist.draw(*args, **kwargs, canvas=self)
 
-    def _pixel(self, x, y, color=(255, 255, 255)):
+    def pixel(self, x, y, color=(255, 255, 255)):
         self._data[x, y, :3] = color
 
     @property
