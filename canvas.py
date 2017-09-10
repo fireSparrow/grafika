@@ -28,6 +28,7 @@ class Canvas:
         data[data<0] = 0
         data[data>1] = 1
         data[:, :] *= 255
+
         np.fix(data)
         data = np.array(data, dtype='uint8')
         png.from_array(data, 'RGB').save(name)
@@ -35,7 +36,7 @@ class Canvas:
     def impose(self, artist, *args, **kwargs):
         artist.draw(*args, **kwargs, canvas=self)
 
-    def pixel(self, x, y, color=(255, 255, 255)):
+    def pixel(self, x, y, color=(1, 1, 1)):
         self._data[x, y, :3] = color
 
     @property

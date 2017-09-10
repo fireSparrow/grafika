@@ -5,6 +5,7 @@ from artist import BaseArtist
 from math import floor, ceil
 
 from collections import deque
+import math
 
 
 def mix_color(old, new, v):
@@ -46,7 +47,8 @@ class BaseFigure(BaseArtist):
 
     def _render(self):
         # Возможно, есть смысл делать слепок актуальных параметров в одну эффективную структуру
-        color = (255, 255, 255)  # TODO
+        color = (1, 1, 1)  # TODO
+        deviation = self._deviation_func()
         fragment = self._actual_fragment()
         visited = self._create_mask(fragment)
         queue = deque()  # сравнить производительность deque и list
@@ -55,9 +57,7 @@ class BaseFigure(BaseArtist):
         while queue:
             point = queue.popleft()
             if not visited[point]:
-                deviation = self._right() - self._left(point[0], point[1])
-                value = max(0, min(deviation, 1))
-                print(value)
+                value = max(0, min(3 - deviation(*point), 1))
                 if value:
                     self._pixel(fragment, point[0], point[1], color, value)
                     # Делать ли проверку visited перед добавлением
@@ -85,6 +85,21 @@ class Point(BaseFigure):
                 self._pixel(canvas, x, y, color, rx*ry)
 
 class Line(BaseFigure):
-    _left = lambda self, x, y: (x-y)/5
-    _right = lambda self: 2
-    _start = lambda self: (10, 10)
+
+    _start = lambda self: (self._params.x1, self._params.y1)
+
+    def _deviation_func(self):
+        p = self._params
+        dx, dy = p.x2 - p.x1, p.y2 - p.y1
+        adx, ady = abs(dx), abs(dy)
+        if adx > ady:
+            k = ady / adx
+            c = math.cos(math.atan(k))
+            y0 = p.y1 - k*p.x1
+            d = lambda x, y: abs(((y0 + k*x) - y) * c)
+        else:
+            k = adx / ady
+            c = math.cos(math.atan(k))
+            x0 = p.x1 - k*p.y1
+            d = lambda x, y: abs(((x0 + k*y) - x) * c)
+        return d
